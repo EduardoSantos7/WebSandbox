@@ -4,14 +4,24 @@ use dotenv::dotenv;
 
 use crate::models::car::Car;
 use mongodb::{
-    bson::extjson::de::Error,
-    results::InsertOneResult,
+    bson::{doc, extjson::de::Error, oid::ObjectId},
+    results::{DeleteResult, InsertOneResult, UpdateResult},
     sync::{Client, Collection},
 };
 
 pub struct MongoRepo {
     col: Collection<Car>,
 }
+
+// #[derive(Responder)]
+// pub enum CustomerError<T> {
+//     #[response(status = 400)]
+//     Unauthorized(T),
+//     #[response(status = 400)]
+//     BadRequest(T),
+//     #[response(status = 404)]
+//     NotFound(T),
+// }
 
 impl MongoRepo {
     pub fn init() -> Self {
@@ -42,5 +52,44 @@ impl MongoRepo {
             .ok()
             .expect("Error creating car");
         Ok(car)
+    }
+
+    pub fn get_car(&self, id: &String) -> Result<Car, Error> {
+        let obj_id = ObjectId::parse_str(id).unwrap();
+        let filter = doc! {"_id": obj_id};
+        let car_detail = self
+            .col
+            .find_one(filter, None)
+            .ok()
+            .expect("Error getting car's detail");
+        Ok(car_detail.unwrap())
+    }
+
+    pub fn update_car(&self, id: &String, new_car: Car) -> Result<UpdateResult, Error> {
+        let obj_id = ObjectId::parse_str(id).unwrap();
+        let filter = doc! {"_id": obj_id};
+        let new_doc = doc! {
+            "$set":
+                {
+                    "id": new_car.id
+                },
+        };
+        let updated_doc = self
+            .col
+            .update_one(filter, new_doc, None)
+            .ok()
+            .expect("Error updating car");
+        Ok(updated_doc)
+    }
+
+    pub fn delete_car(&self, id: &String) -> Result<DeleteResult, Error> {
+        let obj_id = ObjectId::parse_str(id).unwrap();
+        let filter = doc! {"_id": obj_id};
+        let car_detail = self
+            .col
+            .delete_one(filter, None)
+            .ok()
+            .expect("Error deleting car");
+        Ok(car_detail)
     }
 }
